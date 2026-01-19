@@ -9,7 +9,7 @@ RUN npm run prod
 # Stage 2: Install Backend Dependencies
 FROM composer:2 as backend
 WORKDIR /app
-COPY composer.json composer.lock .
+COPY composer.json composer.lock ./
 # Install prod dependencies only, no scripts (to avoid errors before code copy)
 RUN composer install --no-dev --ignore-platform-reqs --no-scripts --prefer-dist --no-interaction
 
@@ -39,7 +39,7 @@ COPY --from=backend /app/vendor /var/www/vendor
 # Copy Assets from Frontend Stage
 COPY --from=frontend /app/public/css /var/www/public/css
 COPY --from=frontend /app/public/js /var/www/public/js
-COPY --from=frontend /app/mix-manifest.json /var/www/mix-manifest.json
+COPY --from=frontend /app/public/mix-manifest.json /var/www/mix-manifest.json
 
 # Permission Setup
 RUN chown -R www-data:www-data /var/www \
