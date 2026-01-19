@@ -1,0 +1,124 @@
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    * {
+        font-family: $baseFont;
+    }
+
+    .navbar {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 25px;
+        padding: 25px 50px;
+        color: $white;
+        background: linear-gradient(
+            124deg,
+            #ff2400,
+            #e81d1d,
+            #e8b71d,
+            #e3e81d,
+            #1de840,
+            #1ddde8,
+            #2b1de8,
+            #dd00f3,
+            #dd00f3
+        );
+        background-size: 1800% 1800%;
+        animation: rainbow 18s ease infinite;
+
+        @keyframes rainbow {
+            0% {
+                background-position: 0% 82%;
+            }
+            50% {
+                background-position: 100% 19%;
+            }
+            100% {
+                background-position: 0% 82%;
+            }
+        }
+    }
+
+    .auth-container {
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+    }
+
+    .auth-box {
+        display: flex;
+        width: 100%;
+        justify-content: center;
+        height: 500px;
+        font-size: 0.875rem;
+
+        &.box--big {
+            height: 700px;
+        }
+    }
+
+    .relative-container {
+        position: relative;
+
+        .global-alert__container {
+            position: absolute;
+            top: 5px;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            display: flex;
+            justify-content: center;
+            animation: fadein 1.5s;
+        }
+
+        @keyframes fadein {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .global-alert {
+            position: relative;
+            max-width: 400px;
+            min-width: 300px;
+        }
+
+        .title {
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+
+        .close-icon {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+        }
+    }
+
+    // --------------
+    // Palette Community
+    // --------------
+    .palette-boxes__container {
+        max-height: 77vh;
+        overflow: auto;
+    }
+
+    .palette-box {
+        position: relative;
+
+        .box__time-sign {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+        }
+    }
+
+    .color-box {
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+    }
+}

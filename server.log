@@ -1,0 +1,89 @@
+PHP Deprecated:  Facade\FlareClient\Flare::register(): Implicitly marking parameter $apiSecret as nullable is deprecated, the explicit nullable type must be used instead in /home/duwa/Git/laravel-fullstack-app/vendor/facade/flare-client-php/src/Flare.php on line 65
+PHP Deprecated:  Facade\FlareClient\Flare::register(): Implicitly marking parameter $contextDetector as nullable is deprecated, the explicit nullable type must be used instead in /home/duwa/Git/laravel-fullstack-app/vendor/facade/flare-client-php/src/Flare.php on line 65
+PHP Deprecated:  Facade\FlareClient\Flare::register(): Implicitly marking parameter $container as nullable is deprecated, the explicit nullable type must be used instead in /home/duwa/Git/laravel-fullstack-app/vendor/facade/flare-client-php/src/Flare.php on line 65
+PHP Deprecated:  Facade\FlareClient\Flare::__construct(): Implicitly marking parameter $contextDetector as nullable is deprecated, the explicit nullable type must be used instead in /home/duwa/Git/laravel-fullstack-app/vendor/facade/flare-client-php/src/Flare.php on line 104
+PHP Deprecated:  Facade\FlareClient\Flare::__construct(): Implicitly marking parameter $container as nullable is deprecated, the explicit nullable type must be used instead in /home/duwa/Git/laravel-fullstack-app/vendor/facade/flare-client-php/src/Flare.php on line 104
+PHP Deprecated:  Facade\FlareClient\Flare::report(): Implicitly marking parameter $callback as nullable is deprecated, the explicit nullable type must be used instead in /home/duwa/Git/laravel-fullstack-app/vendor/facade/flare-client-php/src/Flare.php on line 201
+PHP Deprecated:  Facade\FlareClient\Flare::reportMessage(): Implicitly marking parameter $callback as nullable is deprecated, the explicit nullable type must be used instead in /home/duwa/Git/laravel-fullstack-app/vendor/facade/flare-client-php/src/Flare.php on line 235
+PHP Deprecated:  Facade\Ignition\DumpRecorder\MultiDumpHandler::addHandler(): Implicitly marking parameter $callable as nullable is deprecated, the explicit nullable type must be used instead in /home/duwa/Git/laravel-fullstack-app/vendor/facade/ignition/src/DumpRecorder/MultiDumpHandler.php on line 17
+Starting Laravel development server: http://127.0.0.1:8000
+[Mon Jan 19 09:18:57 2026] PHP 8.4.16 Development Server (http://127.0.0.1:8000) started
+[Mon Jan 19 09:19:07 2026] 127.0.0.1:42014 Accepted
+[Mon Jan 19 09:19:07 2026] PHP Deprecated:  Facade\FlareClient\Flare::register(): Implicitly marking parameter $apiSecret as nullable is deprecated, the explicit nullable type must be used instead in /home/duwa/Git/laravel-fullstack-app/vendor/facade/flare-client-php/src/Flare.php on line 65
+[Mon Jan 19 09:19:07 2026] PHP Deprecated:  Facade\FlareClient\Flare::register(): Implicitly marking parameter $contextDetector as nullable is deprecated, the explicit nullable type must be used instead in /home/duwa/Git/laravel-fullstack-app/vendor/facade/flare-client-php/src/Flare.php on line 65
+[Mon Jan 19 09:19:07 2026] PHP Deprecated:  Facade\FlareClient\Flare::register(): Implicitly marking parameter $container as nullable is deprecated, the explicit nullable type must be used instead in /home/duwa/Git/laravel-fullstack-app/vendor/facade/flare-client-php/src/Flare.php on line 65
+[Mon Jan 19 09:19:07 2026] PHP Deprecated:  Facade\FlareClient\Flare::__construct(): Implicitly marking parameter $contextDetector as nullable is deprecated, the explicit nullable type must be used instead in /home/duwa/Git/laravel-fullstack-app/vendor/facade/flare-client-php/src/Flare.php on line 104
+[Mon Jan 19 09:19:07 2026] PHP Deprecated:  Facade\FlareClient\Flare::__construct(): Implicitly marking parameter $container as nullable is deprecated, the explicit nullable type must be used instead in /home/duwa/Git/laravel-fullstack-app/vendor/facade/flare-client-php/src/Flare.php on line 104
+[Mon Jan 19 09:19:07 2026] PHP Deprecated:  Facade\FlareClient\Flare::report(): Implicitly marking parameter $callback as nullable is deprecated, the explicit nullable type must be used instead in /home/duwa/Git/laravel-fullstack-app/vendor/facade/flare-client-php/src/Flare.php on line 201
+[Mon Jan 19 09:19:07 2026] PHP Deprecated:  Facade\FlareClient\Flare::reportMessage(): Implicitly marking parameter $callback as nullable is deprecated, the explicit nullable type must be used instead in /home/duwa/Git/laravel-fullstack-app/vendor/facade/flare-client-php/src/Flare.php on line 235
+[Mon Jan 19 09:19:07 2026] PHP Deprecated:  Facade\Ignition\DumpRecorder\MultiDumpHandler::addHandler(): Implicitly marking parameter $callable as nullable is deprecated, the explicit nullable type must be used instead in /home/duwa/Git/laravel-fullstack-app/vendor/facade/ignition/src/DumpRecorder/MultiDumpHandler.php on line 17
+[Mon Jan 19 09:19:07 2026] 127.0.0.1:42014 Closing
+[Mon Jan 19 09:19:18 2026] 127.0.0.1:39728 Accepted
+[Mon Jan 19 09:19:18 2026] 127.0.0.1:39728 Closing
+[Mon Jan 19 09:19:18 2026] 127.0.0.1:39738 Accepted
+[Mon Jan 19 09:19:18 2026] 127.0.0.1:39738 [200]: GET /css/app.css
+[Mon Jan 19 09:19:18 2026] 127.0.0.1:39748 Accepted
+[Mon Jan 19 09:19:18 2026] 127.0.0.1:39738 Closing
+[Mon Jan 19 09:19:19 2026] 127.0.0.1:39748 [200]: GET /images/palette-icon.png
+[Mon Jan 19 09:19:19 2026] 127.0.0.1:39748 Closing
+[Mon Jan 19 09:19:22 2026] 127.0.0.1:39752 Accepted
+[Mon Jan 19 09:19:23 2026] 127.0.0.1:39752 Closing
+[Mon Jan 19 09:19:23 2026] 127.0.0.1:39766 Accepted
+[Mon Jan 19 09:19:23 2026] 127.0.0.1:39766 Closing
+[Mon Jan 19 09:19:23 2026] 127.0.0.1:39776 Accepted
+[Mon Jan 19 09:19:23 2026] 127.0.0.1:39776 [200]: GET /images/palette-1.png
+[Mon Jan 19 09:19:23 2026] 127.0.0.1:39778 Accepted
+[Mon Jan 19 09:19:23 2026] 127.0.0.1:39776 Closing
+[Mon Jan 19 09:19:23 2026] 127.0.0.1:39778 [200]: GET /css/app.css
+[Mon Jan 19 09:19:23 2026] 127.0.0.1:39778 Closing
+[Mon Jan 19 09:19:23 2026] 127.0.0.1:39780 Accepted
+[Mon Jan 19 09:19:24 2026] 127.0.0.1:39780 Closing
+[Mon Jan 19 09:19:24 2026] 127.0.0.1:39784 Accepted
+[Mon Jan 19 09:19:24 2026] 127.0.0.1:39784 [200]: GET /css/app.css
+[Mon Jan 19 09:19:24 2026] 127.0.0.1:39800 Accepted
+[Mon Jan 19 09:19:24 2026] 127.0.0.1:39784 Closing
+[Mon Jan 19 09:19:24 2026] 127.0.0.1:39800 [200]: GET /images/palette-icon.png
+[Mon Jan 19 09:19:24 2026] 127.0.0.1:39800 Closing
+[Mon Jan 19 09:19:24 2026] 127.0.0.1:39806 Accepted
+[Mon Jan 19 09:19:25 2026] 127.0.0.1:39806 Closing
+[Mon Jan 19 09:19:25 2026] 127.0.0.1:39808 Accepted
+[Mon Jan 19 09:19:25 2026] 127.0.0.1:39808 Closing
+[Mon Jan 19 09:19:25 2026] 127.0.0.1:39816 Accepted
+[Mon Jan 19 09:19:25 2026] 127.0.0.1:39816 [200]: GET /css/app.css
+[Mon Jan 19 09:19:25 2026] 127.0.0.1:39830 Accepted
+[Mon Jan 19 09:19:25 2026] 127.0.0.1:39816 Closing
+[Mon Jan 19 09:19:25 2026] 127.0.0.1:39830 [200]: GET /images/palette-1.png
+[Mon Jan 19 09:19:25 2026] 127.0.0.1:39830 Closing
+[Mon Jan 19 09:19:25 2026] 127.0.0.1:39836 Accepted
+[Mon Jan 19 09:19:27 2026] 127.0.0.1:39836 Closing
+[Mon Jan 19 09:19:28 2026] 127.0.0.1:34700 Accepted
+[Mon Jan 19 09:19:28 2026] 127.0.0.1:34700 [200]: GET /css/app.css
+[Mon Jan 19 09:19:28 2026] 127.0.0.1:34704 Accepted
+[Mon Jan 19 09:19:28 2026] 127.0.0.1:34700 Closing
+[Mon Jan 19 09:19:28 2026] 127.0.0.1:34704 [200]: GET /images/palette-3.jpg
+[Mon Jan 19 09:19:28 2026] 127.0.0.1:34704 Closing
+[Mon Jan 19 09:19:28 2026] 127.0.0.1:34712 Accepted
+[Mon Jan 19 09:19:33 2026] 127.0.0.1:34712 Closed without sending a request; it was probably just an unused speculative preconnection
+[Mon Jan 19 09:19:33 2026] 127.0.0.1:34712 Closing
+[Mon Jan 19 09:19:44 2026] 127.0.0.1:56832 Accepted
+[Mon Jan 19 09:19:44 2026] 127.0.0.1:56832 Closing
+[Mon Jan 19 09:19:44 2026] 127.0.0.1:56836 Accepted
+[Mon Jan 19 09:19:44 2026] 127.0.0.1:56836 Closing
+[Mon Jan 19 09:19:44 2026] 127.0.0.1:56838 Accepted
+[Mon Jan 19 09:19:44 2026] 127.0.0.1:56838 [200]: GET /css/app.css
+[Mon Jan 19 09:19:44 2026] 127.0.0.1:56846 Accepted
+[Mon Jan 19 09:19:44 2026] 127.0.0.1:56838 Closing
+[Mon Jan 19 09:19:44 2026] 127.0.0.1:56846 [200]: GET /images/palette-3.jpg
+[Mon Jan 19 09:19:44 2026] 127.0.0.1:56846 Closing
+[Mon Jan 19 09:19:52 2026] 127.0.0.1:45000 Accepted
+[Mon Jan 19 09:19:52 2026] 127.0.0.1:45000 Closing
+[Mon Jan 19 09:19:52 2026] 127.0.0.1:45016 Accepted
+[Mon Jan 19 09:19:52 2026] 127.0.0.1:45016 Closing
+[Mon Jan 19 09:19:52 2026] 127.0.0.1:45018 Accepted
+[Mon Jan 19 09:19:52 2026] 127.0.0.1:45018 [200]: GET /css/app.css
+[Mon Jan 19 09:19:52 2026] 127.0.0.1:45018 Closing
+[Mon Jan 19 09:19:55 2026] 127.0.0.1:45030 Accepted
+[Mon Jan 19 09:20:00 2026] 127.0.0.1:45030 Closed without sending a request; it was probably just an unused speculative preconnection
+[Mon Jan 19 09:20:00 2026] 127.0.0.1:45030 Closing
+Environment modified. Restarting server...
+[Mon Jan 19 09:25:14 2026] PHP 8.4.16 Development Server (http://127.0.0.1:8000) started

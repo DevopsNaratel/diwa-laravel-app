@@ -1,0 +1,12 @@
+.git
+.gitignore
+.env
+node_modules
+vendor
+storage/framework/cache/data
+storage/app/public
+tests
+docker-compose.yml
+Dockerfile
+README.md
+phpunit.xml

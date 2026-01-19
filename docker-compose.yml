@@ -1,0 +1,51 @@
+version: "3.7"
+services:
+  app:
+    build:
+      args:
+        user: duwa
+        uid: 1000
+      context: ./
+      dockerfile: Dockerfile
+    image: laravel-fullstack-app
+    container_name: laravel-fullstack-app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+    environment:
+      DB_HOST: db
+    networks:
+      - laravel
+
+  db:
+    image: mysql:8.0
+    container_name: laravel-fullstack-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: "${DB_PASSWORD}"
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+    volumes:
+      - dbdata:/var/lib/mysql
+    networks:
+      - laravel
+
+  nginx:
+    image: nginx:alpine
+    container_name: laravel-fullstack-nginx
+    restart: unless-stopped
+    ports:
+      - 8000:80
+    volumes:
+      - ./:/var/www
+      - ./docker-compose/nginx:/etc/nginx/conf.d/
+    networks:
+      - laravel
+
+networks:
+  laravel:
+    driver: bridge
+
+volumes:
+  dbdata:
