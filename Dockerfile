@@ -50,6 +50,10 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Configure Supervisor
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
+# Copy Entrypoint
+COPY entrypoint.sh /var/www/entrypoint.sh
+RUN chmod +x /var/www/entrypoint.sh
+
 # Permission Setup
 RUN chown -R www-data:www-data /var/www \
     && chmod -R 775 /var/www/storage \
@@ -57,6 +61,8 @@ RUN chown -R www-data:www-data /var/www \
 
 # Expose Port 80 (HTTP) instead of 9000 (FastCGI)
 EXPOSE 80
+
+ENTRYPOINT ["/var/www/entrypoint.sh"]
 
 # Use Supervisor as the entrypoint to run both Nginx and PHP-FPM
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

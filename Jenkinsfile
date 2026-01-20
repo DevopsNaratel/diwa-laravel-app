@@ -110,6 +110,8 @@ def syncManifest(envName, appName, imageRepo, imageTag, replicas) {
                     if ! grep -q 'type: NodePort' ${valFile}; then
                         sed -i '/^service:/a \\  type: NodePort' ${valFile}
                     fi
+                    # Disable Ingress for Testing to prevent conflicts
+                    sed -i '/^ingress:/,/^[^ ]/ s/enabled: true/enabled: false/' ${valFile}
                 fi
             """
 
