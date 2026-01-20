@@ -27,7 +27,8 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     nginx \
     supervisor \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && apt-get clean && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /etc/nginx/sites-enabled/default
 
 # Install PHP extensions
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
