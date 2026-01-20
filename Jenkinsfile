@@ -2,28 +2,24 @@ pipeline {
     agent any
 
     environment {
-        // --- KONFIGURASI APLIKASI ---
-        APP_NAME       = "laravel-diwa"              // Nama aplikasi di GitOps repo
-        DOCKER_IMAGE   = "devopsnaratel/laravel-diwa" // Nama image di Docker Hub
-        
-        // --- KONFIGURASI GITOPS REPO ---
+        APP_NAME       = "laravel-diwa" 
+        DOCKER_IMAGE   = "devopsnaratel/laravel-diwa"
         GITOPS_REPO    = "https://github.com/DevopsNaratel/Deployment-Manifest-App.git"
         GITOPS_BRANCH  = "main"
-        
-        // Credential IDs di Jenkins
-        GIT_CRED_ID    = "git-token"  // Pastikan ID ini ada di Jenkins Credentials
-        DOCKER_CRED_ID = "docker-hub" // Pastikan ID ini ada di Jenkins Credentials
+        GIT_CRED_ID    = "github-access-token" 
+        DOCKER_CRED_ID = "docker-hub-login"
+        // Variabel penampung versi
+        APP_VERSION    = ""
     }
 
     stages {
-        stage('Checkout & Get Tag') {
+        stage('Checkout & Get Version') {
             steps {
-                checkout scm
                 script {
-                    // Mengambil tag dari Git. Jika tidak ada tag, gunakan commit hash pendek.
-                    // Ini menjawab keinginan agar tag Docker sama dengan tag dari programmer.
-                    IMAGE_TAG = sh(script: "git describe --tags --always || git rev-parse --short HEAD", returnStdout: true).trim()
-                    echo "Programmer Tag detected: ${IMAGE_TAG}"
+                    checkout scm
+                    // Mengambil Tag Git terbaru. Jika tidak ada tag, fallback ke BUILD_NUMBER
+                    APP_VERSION = sh(script: "git describe --tags --always --abbrev=0 || echo ${BUILD_NUMBER}", returnStdout: true).trim()
+                    echo "Aplikasi akan di-build dengan versi: ${APP_VERSION}"
                 }
             }
         }
@@ -32,8 +28,8 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry('', "${DOCKER_CRED_ID}") {
-                        // Build menggunakan tag dari programmer
-                        def customImage = docker.build("${DOCKER_IMAGE}:${IMAGE_TAG}")
+                        // Menggunakan APP_VERSION sebagai tag image
+                        def customImage = docker.build("${DOCKER_IMAGE}:${APP_VERSION}")
                         customImage.push()
                         customImage.push("latest")
                     }
@@ -43,9 +39,8 @@ pipeline {
 
         stage('Deploy to Testing') {
             steps {
-                script {
-                    // Update manifest di repo GitOps untuk env testing
-                    updateManifest("testing", "${APP_NAME}", "${IMAGE_TAG}")
+                script { 
+                    syncManifest("testing", APP_NAME, DOCKER_IMAGE, APP_VERSION, 1) 
                 }
             }
         }
@@ -53,68 +48,86 @@ pipeline {
         stage('Waiting for Approval') {
             steps {
                 script {
-                    echo "Pipeline paused. Menunggu approval manual untuk lanjut ke Production..."
-                    input message: "Approve deployment tag ${IMAGE_TAG} ke Production?", id: 'ApproveDeploy'
+                    echo "Menunggu persetujuan untuk Production..."
+                    try {
+                        input message: "Approve deploy ${APP_VERSION} ke Prod?", id: 'ApproveDeploy'
+                    } catch (Exception e) {
+                        currentBuild.result = 'ABORTED'
+                        error "Deployment dibatalkan."
+                    } finally {
+                        echo "Scaling down Testing environment..."
+                        syncManifest("testing", APP_NAME, DOCKER_IMAGE, APP_VERSION, 0)
+                    }
                 }
             }
         }
 
         stage('Deploy to Production') {
             steps {
-                script {
-                    // Update manifest di repo GitOps untuk env prod
-                    updateManifest("prod", "${APP_NAME}", "${IMAGE_TAG}")
+                script { 
+                    syncManifest("prod", APP_NAME, DOCKER_IMAGE, APP_VERSION, 1) 
                 }
             }
         }
     }
 
     post {
-        always {
-            cleanWs()
-        }
-        success {
-            echo "Deployment tag ${IMAGE_TAG} berhasil diproses ke GitOps."
-        }
+        always { cleanWs() }
     }
 }
 
-// --- Fungsi Helper: Update Manifest GitOps ---
-def updateManifest(envName, appName, imageTag) {
+def syncManifest(envName, appName, imageRepo, imageTag, replicas) {
     def targetFolder = "apps/${appName}-${envName}"
-    
-    dir('gitops-repo-dir') {
-        // 1. Clone repo manifest
-        git branch: "${GITOPS_BRANCH}",
-            url: "${GITOPS_REPO}",
-            credentialsId: "${GIT_CRED_ID}"
+    def gitRepoPath = "gitops-${envName}-${envName.hashCode().toString().take(5)}"
+
+    dir(gitRepoPath) {
+        deleteDir() 
+        checkout([$class: 'GitSCM', 
+            branches: [[name: "${GITOPS_BRANCH}"]], 
+            userRemoteConfigs: [[url: "${GITOPS_REPO}", credentialsId: "${GIT_CRED_ID}"]]
+        ])
 
         if (fileExists(targetFolder)) {
-            echo "Updating tag to ${imageTag} in ${targetFolder}/values.yaml"
+            def valFile = "${targetFolder}/values.yaml"
             
-            // 2. Gunakan sed untuk mengganti nilai tag di dalam file values.yaml
-            sh "sed -i 's/tag: .*/tag: \"${imageTag}\"/' ${targetFolder}/values.yaml"
+            sh """
+                # Update Image Tag: mendukung kutip tunggal/ganda
+                sed -i "s|tag: ['\\\"].*['\\\"]|tag: '${imageTag}'|" ${valFile}
+                
+                # Update Replica Count
+                if grep -q '^replicaCount:' ${valFile}; then
+                    sed -i 's|^replicaCount: .*|replicaCount: ${replicas}|' ${valFile}
+                else
+                    echo 'replicaCount: ${replicas}' >> ${valFile}
+                fi
 
-            // 3. Konfigurasi identitas Git lokal
-            sh 'git config user.email "jenkins@naratel.id"'
-            sh 'git config user.name "Jenkins Pipeline"'
+                # Memastikan targetPort selalu 80 sesuai Dockerfile Anda
+                sed -i 's|targetPort: .*|targetPort: 80|' ${valFile}
 
-            // 4. Logika Anti-Gagal: Hanya commit jika ada perubahan (Fix Exit Code 1)
-            // Menggunakan --allow-empty agar tidak error jika programmer re-deploy tag yang sama
-            withCredentials([usernamePassword(credentialsId: "${GIT_CRED_ID}", 
-                             usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PASS')]) {
+                # Konfigurasi NodePort khusus Testing
+                if [ "${envName}" == "testing" ]; then
+                    sed -i '/^[[:space:]]*type: ClusterIP/d' ${valFile}
+                    if ! grep -q 'type: NodePort' ${valFile}; then
+                        sed -i '/^service:/a \\  type: NodePort' ${valFile}
+                    fi
+                fi
+            """
+
+            withCredentials([usernamePassword(credentialsId: "${GIT_CRED_ID}", usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PASS')]) {
+                def remoteUrl = GITOPS_REPO.replace("https://", "https://${GIT_USER}:${GIT_PASS}@")
                 sh """
-                    git add ${targetFolder}/values.yaml
-                    if ! git diff --cached --exit-code > /dev/null; then
-                        git commit -m "ci: update ${appName} ${envName} to tag ${imageTag}"
-                        git push https://${GIT_USER}:${GIT_PASS}@${GITOPS_REPO.replace('https://', '')} HEAD:${GITOPS_BRANCH}
-                    else
-                        echo "No changes detected. Tag ${imageTag} sudah terpasang. Skipping push."
+                    git config user.email "jenkins@naratel.id"
+                    git config user.name "Jenkins Pipeline"
+                    git add .
+                    if ! git diff-index --quiet HEAD; then
+                        git commit -m "ci: release ${appName} ${envName} version ${imageTag}"
+                        git pull --rebase ${remoteUrl} ${GITOPS_BRANCH}
+                        git push ${remoteUrl} HEAD:${GITOPS_BRANCH}
                     fi
                 """
             }
         } else {
-            error "Folder ${targetFolder} tidak ditemukan! Pastikan generator WebUI sudah membuat folder ini."
+            error "Folder ${targetFolder} tidak ditemukan!"
         }
     }
 }
