@@ -6,7 +6,7 @@ pipeline {
         DOCKER_IMAGE   = "devopsnaratel/laravel-diwa"
         GITOPS_REPO    = "https://github.com/DevopsNaratel/Deployment-Manifest-App.git"
         GITOPS_BRANCH  = "main"
-        GIT_CRED_ID    = "git-hub" 
+        GIT_CRED_ID    = "git-token" 
         DOCKER_CRED_ID = "docker-hub"
         // Variabel penampung versi
         APP_VERSION    = ""
