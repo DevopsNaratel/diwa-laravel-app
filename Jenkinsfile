@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME       = "laravel-diwa" 
+        APP_NAME       = "sybaupmo" 
         DOCKER_IMAGE   = "devopsnaratel/laravel-diwa"
         GITOPS_REPO    = "https://github.com/DevopsNaratel/Deployment-Manifest-App.git"
         GITOPS_BRANCH  = "main"
