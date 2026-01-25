@@ -2,13 +2,13 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME       = "sybaupmo" 
+        APP_NAME       = "laravel-diwa"
         DOCKER_IMAGE   = "devopsnaratel/laravel-diwa"
-        GITOPS_REPO    = "https://github.com/DevopsNaratel/Deployment-Manifest-App.git"
-        GITOPS_BRANCH  = "main"
-        GIT_CRED_ID    = "git-token" 
         DOCKER_CRED_ID = "docker-hub"
-        // Variabel penampung versi
+
+        // URL WebUI Base
+        WEBUI_API      = "https://nonfortifiable-mandie-uncontradictablely.ngrok-free.dev"
+        
         APP_VERSION    = ""
     }
 
@@ -17,18 +17,19 @@ pipeline {
             steps {
                 script {
                     checkout scm
-                    // Mengambil Tag Git terbaru. Jika tidak ada tag, fallback ke BUILD_NUMBER
-                    APP_VERSION = sh(script: "git describe --tags --always --abbrev=0 || echo ${BUILD_NUMBER}", returnStdout: true).trim()
-                    echo "Aplikasi akan di-build dengan versi: ${APP_VERSION}"
+                    APP_VERSION = sh(
+                        script: "git describe --tags --always --abbrev=0 || echo ${BUILD_NUMBER}",
+                        returnStdout: true
+                    ).trim()
+                    echo "Building Version: ${APP_VERSION}"
                 }
             }
         }
 
-        stage('Build & Push Docker Image') {
+        stage('Build & Push Docker') {
             steps {
                 script {
                     docker.withRegistry('', "${DOCKER_CRED_ID}") {
-                        // Menggunakan APP_VERSION sebagai tag image
                         def customImage = docker.build("${DOCKER_IMAGE}:${APP_VERSION}")
                         customImage.push()
                         customImage.push("latest")
@@ -37,26 +38,46 @@ pipeline {
             }
         }
 
-        stage('Deploy to Testing') {
+        stage('Deploy Testing (Ephemeral)') {
             steps {
-                script { 
-                    syncManifest("testing", APP_NAME, DOCKER_IMAGE, APP_VERSION, 1) 
+                script {
+                    echo "Triggering WebUI to create Ephemeral Testing Environment..."
+                    def response = sh(script: """
+                        curl -s -X POST ${WEBUI_API}/api/jenkins/deploy-test \\
+                        -H "Content-Type: application/json" \\
+                        -d '{"appName": "${APP_NAME}", "imageTag": "${APP_VERSION}"}'
+                    """, returnStdout: true).trim()
+
+                    echo "WebUI Response: ${response}"
+
+                    if (response.contains('"error"')) {
+                        error "Failed to deploy testing env: ${response}"
+                    }
+
+                    echo "Waiting for pods to be ready..."
+                    sleep 60
                 }
             }
         }
 
-        stage('Waiting for Approval') {
+        stage('Integration Tests') {
             steps {
                 script {
-                    echo "Menunggu persetujuan untuk Production..."
+                    echo "Running Tests against Testing Env..."
+                    // Add your test commands here
+                }
+            }
+        }
+
+        stage('Approval for Production') {
+            steps {
+                script {
                     try {
-                        input message: "Approve deploy ${APP_VERSION} ke Prod?", id: 'ApproveDeploy'
+                        input message: "Testing Done. Approve deploy ${APP_VERSION} to Production?",
+                              id: 'ApproveDeploy'
                     } catch (Exception e) {
                         currentBuild.result = 'ABORTED'
-                        error "Deployment dibatalkan."
-                    } finally {
-                        echo "Scaling down Testing environment..."
-                        syncManifest("testing", APP_NAME, DOCKER_IMAGE, APP_VERSION, 0)
+                        error "Deployment to Production Cancelled."
                     }
                 }
             }
@@ -64,72 +85,35 @@ pipeline {
 
         stage('Deploy to Production') {
             steps {
-                script { 
-                    syncManifest("prod", APP_NAME, DOCKER_IMAGE, APP_VERSION, 1) 
+                script {
+                    echo "Updating Production Image Version..."
+                    def response = sh(script: """
+                        curl -s -X POST ${WEBUI_API}/api/manifest/update-image \\
+                        -H "Content-Type: application/json" \\
+                        -d '{"appName": "${APP_NAME}", "env": "prod", "imageTag": "${APP_VERSION}"}'
+                    """, returnStdout: true).trim()
+
+                    echo "WebUI Response: ${response}"
+
+                    if (response.contains('"error"')) {
+                        error "Failed to update production: ${response}"
+                    }
                 }
             }
         }
     }
 
     post {
-        always { cleanWs() }
-    }
-}
-
-def syncManifest(envName, appName, imageRepo, imageTag, replicas) {
-    def targetFolder = "apps/${appName}-${envName}"
-    def gitRepoPath = "gitops-${envName}-${envName.hashCode().toString().take(5)}"
-
-    dir(gitRepoPath) {
-        deleteDir() 
-        checkout([$class: 'GitSCM', 
-            branches: [[name: "${GITOPS_BRANCH}"]], 
-            userRemoteConfigs: [[url: "${GITOPS_REPO}", credentialsId: "${GIT_CRED_ID}"]]
-        ])
-
-        if (fileExists(targetFolder)) {
-            def valFile = "${targetFolder}/values.yaml"
-            
-            sh """
-                # Update Image Tag: mendukung kutip tunggal/ganda
-                sed -i "s|tag: ['\\\"].*['\\\"]|tag: '${imageTag}'|" ${valFile}
-                
-                # Update Replica Count
-                if grep -q '^replicaCount:' ${valFile}; then
-                    sed -i 's|^replicaCount: .*|replicaCount: ${replicas}|' ${valFile}
-                else
-                    echo 'replicaCount: ${replicas}' >> ${valFile}
-                fi
-
-                # Memastikan targetPort selalu 80 sesuai Dockerfile Anda
-                sed -i 's|targetPort: .*|targetPort: 80|' ${valFile}
-
-                # Konfigurasi NodePort khusus Testing
-                if [ "${envName}" == "testing" ]; then
-                    sed -i '/^[[:space:]]*type: ClusterIP/d' ${valFile}
-                    if ! grep -q 'type: NodePort' ${valFile}; then
-                        sed -i '/^service:/a \\  type: NodePort' ${valFile}
-                    fi
-                    # Disable Ingress for Testing to prevent conflicts
-                    sed -i '/^ingress:/,/^[^ ]/ s/enabled: true/enabled: false/' ${valFile}
-                fi
-            """
-
-            withCredentials([usernamePassword(credentialsId: "${GIT_CRED_ID}", usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PASS')]) {
-                def remoteUrl = GITOPS_REPO.replace("https://", "https://${GIT_USER}:${GIT_PASS}@")
+        always {
+            script {
+                echo "Cleaning up Ephemeral Testing Environment..."
                 sh """
-                    git config user.email "jenkins@naratel.id"
-                    git config user.name "Jenkins Pipeline"
-                    git add .
-                    if ! git diff-index --quiet HEAD; then
-                        git commit -m "ci: release ${appName} ${envName} version ${imageTag}"
-                        git pull --rebase ${remoteUrl} ${GITOPS_BRANCH}
-                        git push ${remoteUrl} HEAD:${GITOPS_BRANCH}
-                    fi
+                    curl -s -X POST ${WEBUI_API}/api/jenkins/destroy-test \\
+                    -H "Content-Type: application/json" \\
+                    -d '{"appName": "${APP_NAME}"}'
                 """
+                cleanWs()
             }
-        } else {
-            error "Folder ${targetFolder} tidak ditemukan!"
         }
     }
 }
