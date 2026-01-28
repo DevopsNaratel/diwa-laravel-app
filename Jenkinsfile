@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME       = "laravel-diwa"
+        APP_NAME       = "laravel-dw"
         DOCKER_IMAGE   = "devopsnaratel/laravel-diwa"
         DOCKER_CRED_ID = "docker-hub"
 
