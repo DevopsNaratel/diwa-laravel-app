@@ -1,3 +1,5 @@
+import groovy.json.JsonOutput
+
 def sendWebhook(status, progress, stageName) {
     def payload = """
 {"jobName":"${env.JOB_NAME}","buildNumber":"${env.BUILD_NUMBER}","status":"${status}","progress":${progress},"stage":"${stageName}"}
@@ -85,7 +87,8 @@ pipeline {
                 script {
                     sendWebhook('IN_PROGRESS', 65, 'Deploy Testing')
                     echo "Triggering WebUI to create Ephemeral Testing Environment..."
-                    def response = sh(script: "curl -s -X POST ${env.WEBUI_API}/api/jenkins/deploy-test -H 'Content-Type: application/json' -d '{"appName": "${env.APP_NAME}", "imageTag": "${env.APP_VERSION}", "source": "jenkins"}' || true", returnStdout: true).trim()
+                    def deployPayload = JsonOutput.toJson([appName: env.APP_NAME, imageTag: env.APP_VERSION, source: 'jenkins'])
+                    def response = sh(script: "curl -s -X POST ${env.WEBUI_API}/api/jenkins/deploy-test -H 'Content-Type: application/json' -d '${deployPayload}' || true", returnStdout: true).trim()
 
                     echo "WebUI Response: ${response}"
 
@@ -134,7 +137,8 @@ pipeline {
                 script {
                     sendWebhook('IN_PROGRESS', 95, 'Deploy Production')
                     echo "Updating Production Image Version..."
-                    def response = sh(script: "curl -s -X POST ${env.WEBUI_API}/api/manifest/update-image -H 'Content-Type: application/json' -d '{"appName": "${env.APP_NAME}", "env": "prod", "imageTag": "${env.APP_VERSION}", "source": "jenkins"}' || true", returnStdout: true).trim()
+                    def updatePayload = JsonOutput.toJson([appName: env.APP_NAME, env: 'prod', imageTag: env.APP_VERSION, source: 'jenkins'])
+                    def response = sh(script: "curl -s -X POST ${env.WEBUI_API}/api/manifest/update-image -H 'Content-Type: application/json' -d '${updatePayload}' || true", returnStdout: true).trim()
 
                     echo "WebUI Response: ${response}"
 
@@ -151,7 +155,13 @@ pipeline {
                     def tagName = "v${env.APP_VERSION}-prod"
                     echo "Requesting Dashboard to tag Manifest Repo: ${tagName}"
                     
-                    def response = sh(script: "curl -s -X POST ${env.WEBUI_API}/api/manifest/tag -H 'Content-Type: application/json' -d '{"appName": "${env.APP_NAME}", "tagName": "${tagName}", "message": "Stable release v${env.APP_VERSION} for ${env.APP_NAME}", "source": "jenkins"}' || true", returnStdout: true).trim()
+                    def tagPayload = JsonOutput.toJson([
+                        appName: env.APP_NAME,
+                        tagName: tagName,
+                        message: "Stable release v${env.APP_VERSION} for ${env.APP_NAME}",
+                        source: 'jenkins'
+                    ])
+                    def response = sh(script: "curl -s -X POST ${env.WEBUI_API}/api/manifest/tag -H 'Content-Type: application/json' -d '${tagPayload}' || true", returnStdout: true).trim()
                     
                     echo "WebUI Response: ${response}"
 
@@ -176,7 +186,8 @@ pipeline {
         always {
             script {
                 echo "Cleaning up Ephemeral Testing Environment..."
-                sh "curl -s -X POST ${env.WEBUI_API}/api/jenkins/destroy-test -H 'Content-Type: application/json' -d '{"appName": "${env.APP_NAME}"}' || true"
+                def destroyPayload = JsonOutput.toJson([appName: env.APP_NAME])
+                sh "curl -s -X POST ${env.WEBUI_API}/api/jenkins/destroy-test -H 'Content-Type: application/json' -d '${destroyPayload}' || true"
                 cleanWs()
             }
         }
