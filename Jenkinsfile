@@ -18,8 +18,8 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME       = "sawit"
-        DOCKER_IMAGE   = "devopsnaratel/diwapp"
+        APP_NAME       = "diwaw-laravel"
+        DOCKER_IMAGE   = "devopsnaratel/laravel-diwa"
         DOCKER_CRED_ID = "docker-hub"
 
         // URL WebUI Base
@@ -36,10 +36,22 @@ pipeline {
                 script {
                     sendWebhook('STARTED', 2, 'Checkout')
                     checkout scm
-                    env.APP_VERSION = sh(
-                        script: "git describe --tags --always --abbrev=0 || echo ${BUILD_NUMBER}",
+                    def latestTag = sh(
+                        script: "git describe --tags --abbrev=0 2>/dev/null || true",
                         returnStdout: true
                     ).trim()
+
+                    if (!latestTag) {
+                        // Repo has no tags yet: create a unique tag and use it as version.
+                        def newTag = "v0.0.0-build-${env.BUILD_NUMBER}"
+                        echo "No git tags found. Creating tag: ${newTag}"
+                        sh(returnStatus: true, script: 'git tag -a "' + newTag + '" -m "Auto tag ' + newTag + '" || true')
+                        // Best-effort push; won't fail the pipeline if credentials are missing.
+                        sh(returnStatus: true, script: 'git push origin "' + newTag + '" || true')
+                        latestTag = newTag
+                    }
+
+                    env.APP_VERSION = latestTag
                     echo "Building Version: ${env.APP_VERSION}"
                     sendWebhook('IN_PROGRESS', 8, 'Checkout')
                 }
@@ -65,11 +77,20 @@ pipeline {
                 script {
                     sendWebhook('IN_PROGRESS', 55, 'Approval')
                     echo "Registering pending approval in Dashboard..."
-                    def payload = """
-                    {"appName": "${env.APP_NAME}", "buildNumber": "${env.BUILD_NUMBER}", "version": "${env.APP_VERSION}", "jenkinsUrl": "${env.JENKINS_URL}/job/${env.JOB_NAME}/${env.BUILD_NUMBER}", "inputId": "ApproveDeploy", "source": "jenkins"}
-                    """
-                    
-                    sh(script: "curl -s -X POST ${env.WEBUI_API}/api/jenkins/pending -H 'Content-Type: application/json' -d '${payload}' || true")
+                    def buildUrlSafe = (env.BUILD_URL ?: "").trim()
+                    if (!buildUrlSafe) {
+                        buildUrlSafe = "${env.JENKINS_URL}/job/${env.JOB_NAME}/${env.BUILD_NUMBER}"
+                    }
+                    def payloadObj = [
+                        appName: env.APP_NAME,
+                        buildNumber: String(env.BUILD_NUMBER),
+                        version: String(env.APP_VERSION),
+                        jenkinsUrl: String(buildUrlSafe),
+                        inputId: 'ApproveDeploy',
+                        source: 'jenkins'
+                    ]
+                    writeFile file: 'pending_payload.json', text: JsonOutput.toJson(payloadObj)
+                    sh(returnStatus: true, script: "curl -s -X POST '${env.WEBUI_API}/api/jenkins/pending' -H 'Content-Type: application/json' --data @pending_payload.json || true")
 
                     try {
                         input message: "Waiting for configuration & approval from Dashboard...",
@@ -115,11 +136,21 @@ pipeline {
                 script {
                     sendWebhook('IN_PROGRESS', 90, 'Prod Approval')
                     echo "Requesting Final Confirmation from Dashboard..."
-                    def payload = """
-                    {"appName": "${env.APP_NAME}", "buildNumber": "${env.BUILD_NUMBER}", "version": "${env.APP_VERSION}", "jenkinsUrl": "${env.JENKINS_URL}/job/${env.JOB_NAME}/${env.BUILD_NUMBER}", "inputId": "ConfirmProd", "isFinal": true, "source": "jenkins"}
-                    """
-                    
-                    sh(script: "curl -s -X POST ${env.WEBUI_API}/api/jenkins/pending -H 'Content-Type: application/json' -d '${payload}' || true")
+                    def buildUrlSafe = (env.BUILD_URL ?: "").trim()
+                    if (!buildUrlSafe) {
+                        buildUrlSafe = "${env.JENKINS_URL}/job/${env.JOB_NAME}/${env.BUILD_NUMBER}"
+                    }
+                    def payloadObj = [
+                        appName: env.APP_NAME,
+                        buildNumber: String(env.BUILD_NUMBER),
+                        version: String(env.APP_VERSION),
+                        jenkinsUrl: String(buildUrlSafe),
+                        inputId: 'ConfirmProd',
+                        isFinal: true,
+                        source: 'jenkins'
+                    ]
+                    writeFile file: 'pending_payload_final.json', text: JsonOutput.toJson(payloadObj)
+                    sh(returnStatus: true, script: "curl -s -X POST '${env.WEBUI_API}/api/jenkins/pending' -H 'Content-Type: application/json' --data @pending_payload_final.json || true")
 
                     try {
                         input message: "Waiting for Final Production Confirmation...",
