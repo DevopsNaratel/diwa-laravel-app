@@ -27,7 +27,7 @@ pipeline {
         
         APP_VERSION    = ""
         // Optional token for auto sync (set in Jenkins/secret)
-        SYNC_JOB_TOKEN = "change_me_sync_token"
+        SYNC_JOB_TOKEN = "sync-token"
     }
 
     stages {
@@ -52,6 +52,9 @@ pipeline {
                     }
 
                     env.APP_VERSION = latestTag
+                    if (!env.APP_VERSION?.trim()) {
+                        env.APP_VERSION = "build-${env.BUILD_NUMBER}"
+                    }
                     echo "Building Version: ${env.APP_VERSION}"
                     sendWebhook('IN_PROGRESS', 8, 'Checkout')
                 }
@@ -83,9 +86,9 @@ pipeline {
                     }
                     def payloadObj = [
                         appName: env.APP_NAME,
-                        buildNumber: String(env.BUILD_NUMBER),
-                        version: String(env.APP_VERSION),
-                        jenkinsUrl: String(buildUrlSafe),
+                        buildNumber: (env.BUILD_NUMBER ?: '').toString(),
+                        version: (env.APP_VERSION ?: '').toString(),
+                        jenkinsUrl: (buildUrlSafe ?: '').toString(),
                         inputId: 'ApproveDeploy',
                         source: 'jenkins'
                     ]
@@ -142,9 +145,9 @@ pipeline {
                     }
                     def payloadObj = [
                         appName: env.APP_NAME,
-                        buildNumber: String(env.BUILD_NUMBER),
-                        version: String(env.APP_VERSION),
-                        jenkinsUrl: String(buildUrlSafe),
+                        buildNumber: (env.BUILD_NUMBER ?: '').toString(),
+                        version: (env.APP_VERSION ?: '').toString(),
+                        jenkinsUrl: (buildUrlSafe ?: '').toString(),
                         inputId: 'ConfirmProd',
                         isFinal: true,
                         source: 'jenkins'
