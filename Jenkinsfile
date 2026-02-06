@@ -10,79 +10,55 @@ def sendWebhook(status, progress, stageName) {
     }
 }
 
+def registerPending(file) {
+    def http = sh(
+        script: "curl -sS -o /dev/null -w '%{http_code}' -X POST '${env.WEBUI_API}/api/jenkins/pending' -H 'Content-Type: application/json' --data @${file}",
+        returnStdout: true
+    ).trim()
+
+    if (!(http ==~ /2\\d\\d/)) {
+        error "Failed to register approval in WebUI (HTTP ${http})"
+    }
+}
+
+def triggerSync() {
+    def auth = env.SYNC_JOB_TOKEN?.trim() ? "-H 'Authorization: Bearer ${env.SYNC_JOB_TOKEN}'" : ''
+    sh(returnStatus: true, script: "curl -sS -X POST '${env.WEBUI_API}/api/sync' ${auth} || true")
+}
+
 pipeline {
     agent any
 
     environment {
-        APP_NAME       = "diwaw-laravel"
-        DOCKER_IMAGE   = "devopsnaratel/laravel-diwa"
-        DOCKER_CRED_ID = "docker-hub"
-        GIT_CRED_ID    = "git-token"
+        APP_NAME     = "laravel-diwa"
+        DOCKER_IMAGE = "devopsnaratel/laravel-diwa"
+
+        // DEBUG: hardcoded image version
+        APP_VERSION  = "1.0.0"
 
         WEBUI_API      = "https://nonfortifiable-mandie-uncontradictablely.ngrok-free.dev"
         SYNC_JOB_TOKEN = "sync-token"
-        // FIX: APP_VERSION REMOVED FROM HERE
     }
 
     stages {
 
-        stage('Checkout & Get Version') {
+        stage('Checkout (Debug)') {
             steps {
                 script {
-                    sendWebhook('STARTED', 2, 'Checkout')
-
+                    sendWebhook('STARTED', 5, 'Checkout')
                     checkout scm
-                    sh "git fetch --tags --force" // FIX: ensure tags are present
-
-                    def latestTag = sh(
-                        script: "git tag --sort=-creatordate | head -n 1",
-                        returnStdout: true
-                    ).trim()
-
-                    if (!latestTag) {
-                        def newTag = "v0.0.0-build-${env.BUILD_NUMBER}"
-                        echo "No git tags found. Creating tag: ${newTag}"
-
-                        sh "git tag -a ${newTag} -m 'Auto tag ${newTag}'"
-
-                        withCredentials([usernamePassword(
-                            credentialsId: env.GIT_CRED_ID,
-                            usernameVariable: 'GIT_USER',
-                            passwordVariable: 'GIT_TOKEN'
-                        )]) {
-                            sh """
-                                git push https://${GIT_USER}:${GIT_TOKEN}@github.com/DevopsNaratel/diwa-laravel-app.git ${newTag}
-                            """
-                        }
-
-                        // FIX: re-fetch & re-resolve tag
-                        sh "git fetch --tags --force"
-                        latestTag = newTag
-                    }
-
-                    if (!latestTag?.trim()) {
-                        error("APP_VERSION is empty after tag resolution. Aborting.")
-                    }
-
-                    env.APP_VERSION = latestTag.trim() // FIX: single authoritative assignment
-                    echo "Building Version: ${env.APP_VERSION}"
-
-                    sendWebhook('IN_PROGRESS', 8, 'Checkout')
+                    echo "DEBUG MODE: Using prebuilt image ${DOCKER_IMAGE}:${APP_VERSION}"
+                    sendWebhook('IN_PROGRESS', 10, 'Checkout')
                 }
             }
         }
 
-        stage('Build & Push Docker') {
+        stage('Build & Push Docker (SKIPPED)') {
             steps {
                 script {
                     sendWebhook('IN_PROGRESS', 20, 'Build')
-
-                    docker.withRegistry('', env.DOCKER_CRED_ID) {
-                        def img = docker.build("${env.DOCKER_IMAGE}:${env.APP_VERSION}")
-                        img.push()
-                        img.push("latest")
-                    }
-
+                    echo "DEBUG MODE: Skipping docker build & push"
+                    echo "Assuming image exists: ${DOCKER_IMAGE}:${APP_VERSION}"
                     sendWebhook('IN_PROGRESS', 40, 'Build')
                 }
             }
@@ -94,18 +70,19 @@ pipeline {
                     sendWebhook('IN_PROGRESS', 55, 'Approval')
 
                     def payloadObj = [
-                        appName    : env.APP_NAME,
-                        buildNumber: env.BUILD_NUMBER.toString(),
-                        version    : env.APP_VERSION,
-                        jenkinsUrl : env.BUILD_URL,
-                        inputId    : 'ApproveDeploy',
-                        source     : 'jenkins'
+                        appName     : env.APP_NAME,
+                        buildNumber : env.BUILD_NUMBER.toString(),
+                        version     : env.APP_VERSION,
+                        jenkinsUrl  : (env.BUILD_URL ?: '').toString(),
+                        inputId     : 'ApproveDeploy',
+                        source      : 'jenkins',
+                        debug       : true
                     ]
 
                     writeFile file: 'pending_payload.json', text: JsonOutput.toJson(payloadObj)
-                    sh(returnStatus: true, script: "curl -s -X POST '${env.WEBUI_API}/api/jenkins/pending' -H 'Content-Type: application/json' --data @pending_payload.json || true")
+                    registerPending('pending_payload.json')
 
-                    input message: "Waiting for configuration & approval from Dashboard...", id: 'ApproveDeploy'
+                    input message: "DEBUG MODE: Waiting for approval...", id: 'ApproveDeploy'
                 }
             }
         }
@@ -116,22 +93,29 @@ pipeline {
                     sendWebhook('IN_PROGRESS', 65, 'Deploy Testing')
 
                     def deployPayload = JsonOutput.toJson([
-                        appName : env.APP_NAME,
+                        appName  : env.APP_NAME,
                         imageTag: env.APP_VERSION,
-                        source  : 'jenkins'
+                        source  : 'jenkins',
+                        debug   : true
                     ])
 
-                    sh(returnStatus: true, script: "curl -s -X POST ${env.WEBUI_API}/api/jenkins/deploy-test -H 'Content-Type: application/json' -d '${deployPayload}' || true")
-                    sleep 60
+                    sh(returnStatus: true, script: """
+                        curl -sS -X POST '${env.WEBUI_API}/api/jenkins/deploy-test' \
+                        -H 'Content-Type: application/json' \
+                        -d '${deployPayload}' || true
+                    """)
+
+                    triggerSync()
+                    sleep 30
                 }
             }
         }
 
-        stage('Integration Tests') {
+        stage('Integration Tests (Debug)') {
             steps {
                 script {
                     sendWebhook('IN_PROGRESS', 80, 'Tests')
-                    echo "Running Tests..."
+                    echo "DEBUG MODE: Integration tests placeholder"
                 }
             }
         }
@@ -140,7 +124,22 @@ pipeline {
             steps {
                 script {
                     sendWebhook('IN_PROGRESS', 90, 'Prod Approval')
-                    input message: "Waiting for Final Production Confirmation...", id: 'ConfirmProd'
+
+                    def payloadFinal = [
+                        appName     : env.APP_NAME,
+                        buildNumber : env.BUILD_NUMBER.toString(),
+                        version     : env.APP_VERSION,
+                        jenkinsUrl  : (env.BUILD_URL ?: '').toString(),
+                        inputId     : 'ConfirmProd',
+                        isFinal     : true,
+                        source      : 'jenkins',
+                        debug       : true
+                    ]
+
+                    writeFile file: 'pending_payload_final.json', text: JsonOutput.toJson(payloadFinal)
+                    registerPending('pending_payload_final.json')
+
+                    input message: "DEBUG MODE: Confirm production deploy", id: 'ConfirmProd'
                 }
             }
         }
@@ -151,26 +150,43 @@ pipeline {
                     sendWebhook('IN_PROGRESS', 95, 'Deploy Production')
 
                     def updatePayload = JsonOutput.toJson([
-                        appName : env.APP_NAME,
-                        env     : 'prod',
+                        appName  : env.APP_NAME,
+                        env      : 'prod',
                         imageTag: env.APP_VERSION,
-                        source  : 'jenkins'
+                        source  : 'jenkins',
+                        debug   : true
                     ])
 
-                    sh(returnStatus: true, script: "curl -s -X POST ${env.WEBUI_API}/api/manifest/update-image -H 'Content-Type: application/json' -d '${updatePayload}' || true")
+                    sh(returnStatus: true, script: """
+                        curl -sS -X POST '${env.WEBUI_API}/api/manifest/update-image' \
+                        -H 'Content-Type: application/json' \
+                        -d '${updatePayload}' || true
+                    """)
+
+                    triggerSync()
                 }
             }
         }
     }
 
     post {
-        success {
-            script { sendWebhook('SUCCESS', 100, 'Completed') }
-        }
-        failure {
-            script { sendWebhook('FAILED', 100, 'Failed') }
-        }
+        success { script { sendWebhook('SUCCESS', 100, 'Completed') } }
+        failure { script { sendWebhook('FAILED', 100, 'Failed') } }
         always {
+            script {
+                def destroyPayload = JsonOutput.toJson([
+                    appName: env.APP_NAME,
+                    debug  : true
+                ])
+
+                sh(returnStatus: true, script: """
+                    curl -sS -X POST '${env.WEBUI_API}/api/jenkins/destroy-test' \
+                    -H 'Content-Type: application/json' \
+                    -d '${destroyPayload}' || true
+                """)
+
+                triggerSync()
+            }
             cleanWs()
         }
     }
