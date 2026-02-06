@@ -38,55 +38,31 @@ pipeline {
         WEBUI_API      = "https://nonfortifiable-mandie-uncontradictablely.ngrok-free.dev"
         // Optional token for /api/sync
         SYNC_JOB_TOKEN = "sync-token"
+
+        // Debug pipeline uses a prebuilt image
+        PREBUILT_IMAGE_TAG = "1.0.0"
     }
 
     stages {
-        stage('Checkout & Get Version') {
+        stage('Checkout & Set Version') {
             steps {
                 script {
                     sendWebhook('STARTED', 2, 'Checkout')
                     checkout scm
                     sh "git fetch --tags --force"
 
-                    def latestTag = sh(script: "git tag --sort=-creatordate | head -n 1", returnStdout: true).trim()
-                    if (!latestTag) {
-                        def newTag = "v0.0.0-build-${env.BUILD_NUMBER}"
-                        echo "No git tags found. Creating tag: ${newTag}"
-                        sh "git tag -a ${newTag} -m 'Auto tag ${newTag}'"
-
-                        // Best-effort push. If credentials are not available, the pipeline continues.
-                        try {
-                            withCredentials([usernamePassword(credentialsId: env.GIT_CRED_ID, usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
-                                // Prefer pushing to origin; if origin requires auth, configure it in Jenkins.
-                                sh(returnStatus: true, script: "git push origin ${newTag} || true")
-                            }
-                        } catch (e) {
-                            echo "Skipping git tag push (no credentials or push failed): ${e}"
-                        }
-
-                        sh "git fetch --tags --force"
-                        latestTag = newTag
-                    }
-
-                    if (!latestTag?.trim()) {
-                        error("APP_VERSION is empty after tag resolution. Aborting.")
-                    }
-                    env.APP_VERSION = latestTag.trim()
-                    echo "Building Version: ${env.APP_VERSION}"
+                    env.APP_VERSION = env.PREBUILT_IMAGE_TAG
+                    echo "Debug Pipeline: Using prebuilt image version ${env.APP_VERSION}"
                     sendWebhook('IN_PROGRESS', 8, 'Checkout')
                 }
             }
         }
 
-        stage('Build & Push Docker') {
+        stage('Skip Docker Build (Debug)') {
             steps {
                 script {
                     sendWebhook('IN_PROGRESS', 20, 'Build')
-                    docker.withRegistry('', env.DOCKER_CRED_ID) {
-                        def img = docker.build("${env.DOCKER_IMAGE}:${env.APP_VERSION}")
-                        img.push()
-                        img.push("latest")
-                    }
+                    echo "Skipping Docker build/push. Using ${env.DOCKER_IMAGE}:${env.APP_VERSION}"
                     sendWebhook('IN_PROGRESS', 40, 'Build')
                 }
             }
