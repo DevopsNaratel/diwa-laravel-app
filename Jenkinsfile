@@ -10,8 +10,8 @@ pipeline {
 
     environment {
         APP_NAME       = 'laravel-app'
-        DOCKER_IMAGE   = 'devopsnaratel/laravel-diwa'
-        WEBUI_API      = 'https://nonfortifiable-mandie-uncontradictablely.ngrok-free.dev'
+        DOCKER_IMAGE   = 'nginx'
+        WEBUI_API      = 'http://117.103.71.154:31078'
         SYNC_JOB_TOKEN = 'sync-token'
     }
 
